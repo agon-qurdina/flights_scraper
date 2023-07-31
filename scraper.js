@@ -1,8 +1,11 @@
 const { launchBrowser } = require("./browser");
 
-PRICE_LIMIT = 40;
-PRICES_SELECTOR = "#destinations > ul > li > a > div > p";
-COUNTRIES_SELECTOR = "#destinations > ul > li > a > div > h3";
+PRICE_LIMIT = 50;
+// CONTAINER_SELECTOR = "#CombinedResultsPlaces > div:nth-child(4) > div.ResultList_container__MDk1N";
+PRICES_SELECTOR =
+  '//*[@id="CombinedResultsPlaces"]/div[3]/div[1]/div/a/div/div[2]/div[2]/span[2]';
+COUNTRIES_SELECTOR =
+  '//*[@id="CombinedResultsPlaces"]/div[3]/div[1]/div/a/div/div[2]/div[1]/span';
 
 const scrape = async (url) => {
   const browser = await launchBrowser();
@@ -10,7 +13,7 @@ const scrape = async (url) => {
     const page = await browser.newPage();
     await page.goto(url);
 
-    await page.waitForSelector(PRICES_SELECTOR);
+    await page.waitForXPath(PRICES_SELECTOR);
 
     const prices = await fetchPrices(page);
     const countries = await fetchCountries(page, prices.length);
@@ -21,7 +24,7 @@ const scrape = async (url) => {
       return obj;
     }, {});
 
-    console.log(results);
+    return results;
   } catch (error) {
     console.log(`An error happened: ${error}`);
   } finally {
@@ -30,11 +33,14 @@ const scrape = async (url) => {
 };
 
 const fetchPrices = async (page) => {
-  const prices = await page.$$eval(PRICES_SELECTOR, (nodes) =>
-    nodes.map((n) => {
-      const priceStr = n.innerText.match(/from ([0-9]+) €/)?.[1];
-      return priceStr && parseFloat(priceStr);
-    })
+  const priceHandles = await page.$x(PRICES_SELECTOR);
+  const prices = await Promise.all(
+    priceHandles.map((p) =>
+      page.evaluate((el) => {
+        const priceStr = el.textContent.match(/([0-9]+) €/)?.[1];
+        return priceStr && parseFloat(priceStr);
+      }, p)
+    )
   );
   return prices.filter((n) => n && n <= PRICE_LIMIT);
 };
@@ -42,9 +48,13 @@ const fetchPrices = async (page) => {
 const fetchCountries = async (page, limit) => {
   if (limit == 0) return [];
 
-  const countries = await page.$$eval(COUNTRIES_SELECTOR, (nodes) =>
-    nodes.map((n) => n.innerText)
+  const countryHandles = await page.$x(COUNTRIES_SELECTOR);
+  const countries = await Promise.all(
+    countryHandles.map((c) => page.evaluate((el) => el.textContent, c))
   );
+  // const countries = await page.$$eval(COUNTRIES_SELECTOR, (nodes) =>
+  //   nodes.map((n) => n.innerText)
+  // );
   return countries.slice(0, limit);
 };
 

@@ -5,11 +5,14 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "debug": "node -r dotenv/config inspect index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.2.0",
+    "nodemailer": "^6.9.2",
     "puppeteer": "^19.11.1"
   }
 }
